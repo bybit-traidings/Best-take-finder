@@ -5,7 +5,21 @@
 <body style="margin: 0; min-height: 100vh; background: #363636; font-family: Poppins, sans-serif;">
     <div style="display: flex;">
         <div style="width: 60vw; max-height: 672;">
-            <div id="chart" style="display: flex; align-items: end; justify-content: space-around; height: 600px; background: #000; overflow: hidden;"></div>
+            <div id="chart" style="display: flex; align-items: end; justify-content: space-around; height: 600px; background: #000; overflow: hidden;">
+                <div style="color:rgb(227, 227, 227); line-height: 1.4rem; height: 80%; width:100%; padding: 3rem;">
+                
+                    <h2>chat-GPT про код этой страницы:<h2>
+                    <p style="font-size: 1rem;">
+                        Эта функция выглядит довольно сложной, но важно понять ее цель. Она принимает параметры, такие как diaposone (время жизни сделки в количестве свечей), history (история свечей) и risk (риск), и возвращает массив значений.
+                        Затем функция проходит по всем элементам истории и выбирает только те, в которых есть сигналы покупки или продажи (Buy или Sell). Она создает массив объектов, где каждый объект представляет собой сигнал и следующие diaposone элементов истории. Это позволяет получить контекст сделки.
+                        Затем происходит обработка каждого сигнала. Для каждого сигнала вычисляется процентная прибыль, основанная на максимальном значении цены и закрывающей цены. Затем сигналы сортируются по возрастанию процентов.
+                        Далее функция создает новый массив chart, который содержит дополнительные данные, такие как потенциальная прибыль, риск и результат (прибыль, взвешенная по риску). chart также сортируется по убыванию результатов.
+                        Затем функция выбирает наиболее прибыльную сделку и следующую по прибыльности.
+                        <br><br>
+                        Анализируйте исторические данные, оптимизируйте прибыль и управляйте рисками.
+                    </p>
+                </div>
+            </div>
             <div id="chart2" style="display: flex; align-items: center; justify-content: space-around; height: 60px; background: #000; margin-top: 4px; overflow: hidden;"></div>
             <div id="chart3" style="display: flex; align-items: center; justify-content: space-around; height: 12px; position:relative; top: -36px; color: white; overflow: hidden;"></div>
         </div>
