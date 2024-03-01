@@ -105,7 +105,7 @@
 
         const hh = history? history
                 .split('\n')
-                .map(l => (([time,open,high,low,close,Buy,Sell])=>({time,open,high,low,close,Buy,Sell}))(l.split(',')))
+                .map(l => (([time,open,high,low,close,Buy,Sell])=>({time,open,high,low,close,Buy,Sell}))(l.split(',').length>1?l.split(','): l.split('	')))
             : []
 
             console.log(hh);
