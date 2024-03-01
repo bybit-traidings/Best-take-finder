@@ -84,7 +84,7 @@
     
             result.innerText = history&&history!=='Вставьте'?
             ` Процент take показавший себя наилучшим образом - [  ${(res.proc*100).toFixed(2)}% - ${(charts[res.i+1].proc*100).toFixed(2)}%  ] 
-                при этом сумарный профит за весь период составит от - ${(charts.filter(c=>c.proc>res.proc).reduce((a,c)=> a+c.proc,0)*100).toFixed(2)}%
+                при этом сумарный профит за весь период составит от - ${(charts.filter(c=>c.proc>res.proc).length*res.proc*100).toFixed(2)}%
             `:`ВНИМАНИЕ! этот график лишь демонстрация, заполните поля реальными данными! 
                 Процент take показавший себя наилучшим образом - [  ${(res.proc*100).toFixed(2)}% - ${(charts[res.i+1].proc*100).toFixed(2)}%  ] \n
             `
