@@ -144,7 +144,7 @@
         let chart = signals
             .map((s,i)=> ({...s, profit: s.proc*(signals.length-i)}))
             .map((s,i)=> ({...s, 
-                risk:  Math.sqrt(1/(signals.length-i)),
+                risk:  Math.pow((i / signals.length),3),//Math.sqrt(1/(signals.length-i)),
                 res: s.profit * (signals.length-(i/((risk+1)||0.01)))/(signals.length)
             }));
 
