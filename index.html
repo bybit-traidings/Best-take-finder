@@ -24,16 +24,27 @@
             <div id="chart3" style="display: flex; align-items: center; justify-content: space-around; height: 12px; position:relative; top: -36px; color: white; overflow: hidden;"></div>
         </div>
 
-        <div style="width: 35vw; color: rgb(227, 227, 227); padding: 1rem 3rem; line-height: 1.3rem; max-height: 657; overflow-y: auto;">
+        <div style="width: 35vw; color: rgb(227, 227, 227); padding: 1rem 3rem; line-height: 1.2rem; max-height: 672; overflow-y: auto;">
             <h2>Здесь можно расчитать наилучшее значение profit %</h2>
             <p>Заполните все поля:</p>
             <h3>diaposone</h3>
-            <input type="text" name="diaposone" id="diaposone" value="3">
-            <p>за сколько свечей сделка должна быть закрыта</p>
+            <input type="text" name="diaposone" id="diaposone" value="3" style="width: 200px;">
+            <p>За сколько свечей сделка должна быть закрыта.<br> *Если 0 - динамическое закрытие следующим сигналом.</p>
             <h3>risk</h3>
-            <input type="text" name="risk" id="risk" value="0.5">
-            <p>Число от -1 до 1. Где -0.5 очень бережливо, 0 нормально, 0.5 умеренный риск, 1 рисково.
-                *Если значение вне  этого диапозона результат не будет отражать реальность</p>
+            <input type="range" min="-1" max="2" step="0.1" name="risk" id="risk" value="0.5" style="width: 200px;">
+            <p id="riskLabel">0.5 - умеренный риск.</p>
+            <script> 
+                document.getElementById('risk').addEventListener("input",(e)=> {
+                    console.log(e.target.value);
+                    document.getElementById('riskLabel').innerText = `${e.target.value} - ${
+                        e.target.value<-0.5 ? 'очень бережливо':
+                        e.target.value<0.1? 'бережливо':
+                        e.target.value<0.6? 'умеренный риск':
+                        e.target.value<1.1? 'рисково':
+                        'лотерея'
+                    }` 
+                    })
+            </script>
             <h3>history</h3>
             <p>
                 Загрузите сюда историю в виде строки (Её можно получить скопировав данные из Exel таблици, предварительно скачав на Trading-Wiue) 
@@ -65,14 +76,16 @@
 
 
         try {
-            const diaposone = +document.getElementById('diaposone').value;
+            let diaposone = document.getElementById('diaposone').value;
+            diaposone = +(diaposone.includes('~')? 0: diaposone);
             const risk = +document.getElementById('risk').value;
             const history = document.getElementById('history').value;
 
             if(isNaN(diaposone)) throw Error('nanD');
             if(isNaN(risk)) throw Error('nanR');
             
-            const charts = getChart(history||null, +document.getElementById('risk').value, diaposone);
+            const {charts, d} = getChart(history||null, +document.getElementById('risk').value, diaposone);
+            if(+diaposone<1) document.getElementById('diaposone').value = '~'+d;
 
             const favorite = [...charts].sort((a,b)=>b.res-a.res)[0];
             let res = {proc: 0, i: 0};
@@ -81,8 +94,8 @@
                 const column = document.createElement('div');
                 const risk = document.createElement('div');
                 column.appendChild(risk)
-                column.style.cssText = `width: ${window.innerWidth*0.6/(charts.length*1.25)}px; height: ${c.profit*(500/Math.max(...charts.map(c => c.profit)))}px; background: #34c28c;`;
-                risk.style.cssText = `width: ${window.innerWidth*0.6/(charts.length*1.25)}px; height: ${c.risk*100}%; background: #d95d5d;`;
+                column.style.cssText = `width: ${Math.ceil(window.innerWidth*0.6/(charts.length*1.24))}px; height: ${c.profit*(500/Math.max(...charts.map(c => c.profit)))}px; background: #34c28c;`;
+                risk.style.cssText = `width: ${Math.ceil(window.innerWidth*0.6/(charts.length*1.24))}px; height: ${c.risk*100}%; background: #d95d5d;`;
                 chart.appendChild(column);
     
                 const column2 = document.createElement('div');
@@ -102,8 +115,8 @@
             `:`ВНИМАНИЕ! этот график лишь демонстрация, заполните поля реальными данными! 
                 Процент take показавший себя наилучшим образом - [  ${(res.proc*100).toFixed(2)}% - ${(charts[res.i+1].proc*100).toFixed(2)}%  ] \n
             `
-            
         } catch (error) {
+            console.log(error);
             const errors = {
                 nanD: 'diaposone field must be a number.',
                 nanR: 'risk field must be a number.'
@@ -119,14 +132,13 @@
 
         const hh = history? history
                 .split('\n')
-                .map(l => (([time,open,high,low,close,Buy,Sell])=>({time,open,high,low,close,Buy,Sell}))(l.split(',').length>1?l.split(','): l.split('	')))
+                .map(l => (([time,open,high,low,close,Buy,Sell])=>({time,open,high,low,close,Buy,Sell}))(l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	')))
             : []
 
-            console.log(hh);
 
         const signals = history? 
                 hh
-                .map((h,i) => !!+h.Buy||!!+h.Sell? [{type: !!+h.Buy? 'b':'s' ,...h}, ...hh.slice(i+1,i+diaposone)]:'')
+                .map((h,i) => !!+h.Buy||!!+h.Sell? [{type: !!+h.Buy? 'b':'s' ,...h}, ...(diaposone>0? hh.slice(i+1,i+diaposone): hh.slice(i+1,hh.findIndex((h, j)=> i<j&&(!!+h.Buy||!!+h.Sell))+1))]:'')
                 .filter(h => !!h)
                 .map(s =>  ({
                     close: +s[0].close,
@@ -141,14 +153,14 @@
         signals.sort((a,b) => a.proc-b.proc);
 
 
-        let chart = signals
+        let charts = signals
             .map((s,i)=> ({...s, profit: s.proc*(signals.length-i)}))
             .map((s,i)=> ({...s, 
                 risk:  Math.pow((i / signals.length),3),//Math.sqrt(1/(signals.length-i)),
-                res: s.profit * (signals.length-(i/((risk+1)||0.01)))/(signals.length)
+                res: s.profit * (signals.length-(i/((risk+1)||0.01)))/(signals.length),
             }));
 
-        return chart
+        return {charts, d: Math.floor(hh.length/hh.reduce((a, h) => a+ (!!+h.Buy||!!+h.Sell||0),0))}
 
     }
 
