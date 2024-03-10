@@ -133,6 +133,7 @@ export default function IndexPage(){
                     value={form.history}
                     onChange={formChangeHandler}
                 />
+                
 
                 <div style={{
                     position: 'fixed',
@@ -293,7 +294,7 @@ export default function IndexPage(){
                         >
                             <tr>
                                 <th style={{width: '257px'}}>Date</th>
-                                <th style={{width: '257px'}}>saccess</th>
+                                <th style={{width: '257px'}}>success</th>
                                 <th style={{width: '257px'}}>loose</th>
                                 <th style={{width: '257px'}}>realTake</th>
                                 <th style={{width: '257px'}}>maxTake</th>
