@@ -10,7 +10,7 @@ const history = require('./history')
 
 function getProfit(diaposone, historyTXT, risk){
     let history = historyTXT.split('\n')
-    histiry= history.map(l => l.split(','))
+    history= history.map(l => l.split(','))
     history = history.map(l => (([time,open,high,low,close,Buy,Sell])=>({time,open,high,low,close,Buy,Sell}))(l))
 
     const signals = history
