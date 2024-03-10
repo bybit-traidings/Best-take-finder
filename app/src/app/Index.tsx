@@ -5,7 +5,7 @@ import IndexPage from "./components/pages/IndexPage";
 import Bar from "./controllers/Bar";
 import { useAppDispatch, useAppSelector } from "../redux/store";
 import useTo from "./controllers/hooks/useTo";
-import { useParams } from "react-router-dom";
+// import { useParams } from "react-router-dom";
 
 export default function Index() {
   const to = useTo({});
@@ -23,15 +23,15 @@ export default function Index() {
       {/* <Bar exeptions={['/']}/> */}
         
       <Router 
-        index="/" 
+        index="/Best-take-finder" 
         toSign='/' 
         roots={{
-          '/': <IndexPage />
+          '/Best-take-finder': <IndexPage />
         }}
         authRoots={{
           // '/news': <News />,
         }}
-        auth={false}
+        auth={true}
         // langs={langs}
       />
       

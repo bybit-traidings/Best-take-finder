@@ -55,7 +55,7 @@ export default function IndexPage(){
         reader.readAsText(file);
     }
    
-    console.log(chart.chart.map(c=>c.type));
+    // console.log(chart.chart.map(c=>c.type));
 
     const tableChart = chart.chart?.length? [...chart.chart].sort((a,b)=>(new Date(b.time)).getTime()-(new Date(a.time)).getTime())
         .reduce((a,c,i)=>{
