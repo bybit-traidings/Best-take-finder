@@ -1,181 +1,30 @@
-<html>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-<body style="margin: 0; min-height: 100vh; background: #363636; font-family: Poppins, sans-serif;">
-    <div style="display: flex;">
-        <div style="width: 60vw; max-height: 672;">
-            <div id="chart" style="display: flex; align-items: end; justify-content: space-around; height: 600px; background: #000; overflow: hidden;">
-                <div style="color:rgb(227, 227, 227); line-height: 1.4rem; height: 80%; width:100%; padding: 3rem;">
-                
-                    <h2>chat-GPT про код этой страницы:<h2>
-                    <p style="font-size: 1rem;">
-                        Эта функция выглядит довольно сложной, но важно понять ее цель. Она принимает параметры, такие как diaposone (время жизни сделки в количестве свечей), history (история свечей) и risk (риск), и возвращает массив значений.
-                        Затем функция проходит по всем элементам истории и выбирает только те, в которых есть сигналы покупки или продажи (Buy или Sell). Она создает массив объектов, где каждый объект представляет собой сигнал и следующие diaposone элементов истории. Это позволяет получить контекст сделки.
-                        Затем происходит обработка каждого сигнала. Для каждого сигнала вычисляется процентная прибыль, основанная на максимальном значении цены и закрывающей цены. Затем сигналы сортируются по возрастанию процентов.
-                        Далее функция создает новый массив chart, который содержит дополнительные данные, такие как потенциальная прибыль, риск и результат (прибыль, взвешенная по риску). chart также сортируется по убыванию результатов.
-                        Затем функция выбирает наиболее прибыльную сделку и следующую по прибыльности.
-                        <br><br>
-                        Анализируйте исторические данные, оптимизируйте прибыль и управляйте рисками.
-                    </p>
-                </div>
-            </div>
-            <div id="chart2" style="display: flex; align-items: center; justify-content: space-around; height: 60px; background: #000; margin-top: 4px; overflow: hidden;"></div>
-            <div id="chart3" style="display: flex; align-items: center; justify-content: space-around; height: 12px; position:relative; top: -36px; color: white; overflow: hidden;"></div>
-        </div>
-
-        <div style="width: 35vw; color: rgb(227, 227, 227); padding: 1rem 3rem; line-height: 1.27rem; max-height: 672; overflow-y: auto;">
-            <h2>Здесь можно расчитать наилучшее значение profit %</h2>
-            <p>Заполните все поля:</p>
-            <h3>diaposone</h3>
-            <input type="text" name="diaposone" id="diaposone" value="3" style="width: 200px;">
-            <p>За сколько свечей сделка должна быть закрыта.<br> *Если 0 - динамическое закрытие следующим сигналом.</p>
-            <h3>risk</h3>
-            <input type="range" min="-1" max="2" step="0.1" name="risk" id="risk" value="0.5" style="width: 200px;">
-            <p id="riskLabel">0.5 - умеренный риск.</p>
-            <script> 
-                document.getElementById('risk').addEventListener("input",(e)=> {
-                    console.log(e.target.value);
-                    document.getElementById('riskLabel').innerText = `${e.target.value} - ${
-                        e.target.value<-0.5 ? 'очень бережливо':
-                        e.target.value<0.1? 'бережливо':
-                        e.target.value<0.6? 'умеренный риск':
-                        e.target.value<1.1? 'рисково':
-                        'лотерея'
-                    }` 
-                    })
-            </script>
-            <h3>history</h3>
-            <p>
-                Загрузите сюда историю в виде строки (Её можно получить скопировав данные из Exel таблици, предварительно скачав на Trading-Wiue) 
-                <br><input type="file" id="csvFile" accept=".csv" style="margin-top: 1rem;">
-            </p>
-            <textarea style="width: 100%;" type="text" name="history" id="history" rows="6" placeholder="Вставьте"></textarea>
-            <div style="width: 100%;">
-                <button onclick="go()" type="button" style="width: 17rem; line-height: 2rem; margin: 1rem auto; background: #000; border-radius: 1rem; color: aliceblue;">GO!</button>
-            </div>
-        </div>
-    </div>
-    <div style="color: aliceblue; text-align: center;">
-        <h1>Result</h1>
-        <h2 id="result"></h2>
-    </div>
-</body>
-<script>
-    const chart = document.getElementById('chart');
-    const chart2 = document.getElementById('chart2');
-    const chart3 = document.getElementById('chart3');
-    const result = document.getElementById('result');
-    
-    function go() {
-
-        chart.innerHTML = '';        
-        chart2.innerHTML = '';
-        chart3.innerHTML = '';
-        result.innerHTML = '';
-
-
-        try {
-            let diaposone = document.getElementById('diaposone').value;
-            diaposone = +(diaposone.includes('~')? 0: diaposone);
-            const risk = +document.getElementById('risk').value;
-            const history = document.getElementById('history').value;
-
-            if(isNaN(diaposone)) throw Error('nanD');
-            if(isNaN(risk)) throw Error('nanR');
-            
-            const {charts, d} = getChart(history||null, +document.getElementById('risk').value, diaposone);
-            if(+diaposone<1) document.getElementById('diaposone').value = '~'+d;
-
-            const favorite = [...charts].sort((a,b)=>b.res-a.res)[0];
-            let res = {proc: 0, i: 0};
-    
-            charts.forEach((c, i) => {
-                const column = document.createElement('div');
-                const risk = document.createElement('div');
-                column.appendChild(risk)
-                column.style.cssText = `width: ${Math.ceil(window.innerWidth*0.6/(charts.length*1.24))}px; height: ${c.profit*(500/Math.max(...charts.map(c => c.profit)))}px; background: #34c28c;`;
-                risk.style.cssText = `width: ${Math.ceil(window.innerWidth*0.6/(charts.length*1.24))}px; height: ${c.risk*100}%; background: #d95d5d;`;
-                chart.appendChild(column);
-    
-                const column2 = document.createElement('div');
-                column2.style.cssText = `width: ${window.innerWidth*0.6/(charts.length)}px; height: ${c.res*(40/Math.max(...charts.map(c => c.res)))}px; background: ${favorite.res === c.res?'rgb(172, 0, 214)':'rgb(31, 87, 91)'}; `;
-                if(favorite.res === c.res) res = {...c, i};
-                if(i&&i%Math.ceil(charts.length/18)==0) {
-                    const proc = document.createElement('p');
-                    proc.innerText = `${(c.proc*100).toFixed(1)}%`
-                    chart3.appendChild(proc)
-                }
-                chart2.appendChild(column2)
-            })
-    
-            result.innerText = history&&history!=='Вставьте'?
-            ` Процент take показавший себя наилучшим образом - [  ${(res.proc*100).toFixed(2)}% - ${(charts[res.i+1].proc*100).toFixed(2)}%  ] 
-                при этом сумарный профит за весь период составит от - ${(charts.filter(c=>c.proc>res.proc).length*res.proc*100).toFixed(2)}%
-            `:`ВНИМАНИЕ! этот график лишь демонстрация, заполните поля реальными данными! 
-                Процент take показавший себя наилучшим образом - [  ${(res.proc*100).toFixed(2)}% - ${(charts[res.i+1].proc*100).toFixed(2)}%  ] \n
-            `
-        } catch (error) {
-            console.log(error);
-            const errors = {
-                nanD: 'diaposone field must be a number.',
-                nanR: 'risk field must be a number.'
-            }
-            result.innerText = `Error: - ${errors[error.message]||'History data is incorect'}
-            `
-        }
-    }
-
-
-
-    function getChart(history, risk, diaposone) {
-
-        const hh = history? history
-                .split('\n')
-                .map(l => (([time,open,high,low,close,Buy,Sell])=>({time,open,high,low,close,Buy,Sell}))(l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	')))
-            : []
-
-
-        const signals = history? 
-                hh
-                .map((h,i) => !!+h.Buy||!!+h.Sell? [{type: !!+h.Buy? 'b':'s' ,...h}, ...(diaposone>0? hh.slice(i+1,i+diaposone): hh.slice(i+1,hh.findIndex((h, j)=> i<j&&(!!+h.Buy||!!+h.Sell))+1))]:'')
-                .filter(h => !!h)
-                .map(s =>  ({
-                    close: +s[0].close,
-                    proc:(Math.max(...s.map(it=>s[0].type === 'b'? it.high : -it.low))/s[0].close)+(s[0].type === 'b'?-1:1)
-                }))
-            : 
-            new Array(80).fill('')
-                .map(_=>({ close: 34+(10*Math.random()-5), proc: (Math.random()/2) }))
-                .concat(new Array(9).fill('')
-                .map(_=>({ close: 34+(10*Math.random()-5), proc: (Math.random()*5) })))
-
-        signals.sort((a,b) => a.proc-b.proc);
-
-
-        let charts = signals
-            .map((s,i)=> ({...s, profit: s.proc*(signals.length-i)}))
-            .map((s,i)=> ({...s, 
-                risk:  Math.pow((i / signals.length),3),//Math.sqrt(1/(signals.length-i)),
-                res: s.profit * (signals.length-(i/((risk+1)||0.01)))/(signals.length),
-            }));
-
-        return {charts, d: Math.floor(hh.length/hh.reduce((a, h) => a+ (!!+h.Buy||!!+h.Sell||0),0))}
-
-    }
-
-    document.getElementById('csvFile').addEventListener('change', loadFile, false);
-    function loadFile(event){
-        const file = event.target.files[0];
-        const reader = new FileReader();
-
-        reader.onload = function(event) {
-            const contents = event.target.result;
-            document.getElementById('history').value = contents;
-            setTimeout(go,10);
-        };
-
-        reader.readAsText(file);
-    }
-</script>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+    <link rel="icon" type="image/svg+xml" href="/Best-take-finder/candle.png" />
+    <!-- Fonts to support Material Design -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap"
+    />
+    <!-- Icons to support Material Design -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Find your Take</title>
+    <script type="module" crossorigin src="/Best-take-finder/assets/index-wD61ryYD.js"></script>
+    <link rel="stylesheet" crossorigin href="/Best-take-finder/assets/index-wuJQ_mWR.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
