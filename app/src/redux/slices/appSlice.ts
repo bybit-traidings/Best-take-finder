@@ -95,7 +95,7 @@ export const getChart = createAsyncThunk(
                 type: (5*Math.random()-(2+1*Math.ceil(i%2)))<0? 'b':'s',
                 profit,
                 risk:  Math.pow(0.5,signals.length-i),//Math.pow((i / signals.length),3),
-                res: profit * (signals.length-(i/((1+(profit>0?risk:-risk))||0.01)))/(signals.length),
+                res: profit * (signals.length-(i/((1+risk)||0.01)))/(signals.length),
             }});
           }
           
@@ -103,7 +103,7 @@ export const getChart = createAsyncThunk(
           const next = chart[chart.findIndex(c=> c.res == favorite.res)+1];
           const d = diaposone||(historyLength? '~'+Math.floor(historyLength/chart.length) : '~7')
         
-          return {favorite, next, chart, d };
+          return {favorite, next, commission, chart, d };
         } catch (error) {
           dispatch(addHint({text: error.message, type: 'error'}))
         }
@@ -115,13 +115,14 @@ export const getChart = createAsyncThunk(
 
 
 export interface appSliceI {
-  chart: {favorite:any, next:any, chart:any[], d: string},
+  chart: {favorite:any, next:any, commission: number, chart:any[], d: string},
 } 
 
 const initialState: appSliceI = {
   chart: {
     favorite: undefined, 
     next: undefined, 
+    commission: 0,
     chart:[],
     d: '1',
   }

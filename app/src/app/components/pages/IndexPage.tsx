@@ -71,8 +71,8 @@ export default function IndexPage(){
                 time: time.replaceAll('T',' ').replaceAll('-','.').split(':').slice(0,2).join(':'),
                 type: type=='b'? 'Buy':'Sell',
                 priceMovement: (100*delta*(type=='b'?1:-1)),
-                realTake: form.strategy.name!='Default'? 100*strategyTake -(strategyTake>0? +form.commission: 0) :
-                                                         100*(proc>choose[0]?.proc? choose[0]?.proc : delta)-(+form.commission),
+                realTake: form.strategy.name!='Default'? 100*strategyTake -(strategyTake>0? chart.commission*100: 0) :
+                                                         100*(proc>choose[0]?.proc? choose[0]?.proc : delta)-(chart.commission*100),
                 maxTake: (100*proc)
             }))(c);
             
@@ -310,9 +310,9 @@ export default function IndexPage(){
                             <span style={{margin: '0 1rem'}}></span>
                             profit: {(tableChart.reduce((a,cc) => [...a,...cc],[]).reduce((a,c)=>a+c.realTake,0)).toFixed(2)}%
                             <span style={{margin: '0 1rem'}}></span>
-                            success: {tableChart.reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>0).length}
+                            success: {tableChart.reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>chart.commission*100).length}
                             <span style={{margin: '0 1rem'}}></span>
-                            loose: {tableChart.reduce((a,cc) => [...a,...cc],[]).length-tableChart.reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>0).length}
+                            loose: {tableChart.reduce((a,cc) => [...a,...cc],[]).length-tableChart.reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>chart.commission*100).length}
                         </h5>
                         :
                         <h5>
@@ -322,9 +322,9 @@ export default function IndexPage(){
                             <span style={{margin: '0 1rem'}}></span>
                             nForecast: {(choose[0]?.profit*100*(1-choose[0]?.risk)).toFixed(2)}%
                             <span style={{margin: '0 1rem'}}></span>
-                            success: {chart.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>0).length}
+                            success: {chart.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>chart.commission).length}
                             <span style={{margin: '0 1rem'}}></span>
-                            loose: {chart.chart.length-chart.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>0).length}
+                            loose: {chart.chart.length-chart.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>chart.commission).length}
                         </h5>
                         }
                     </div>
