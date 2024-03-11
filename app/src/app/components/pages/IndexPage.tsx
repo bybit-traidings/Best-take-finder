@@ -411,7 +411,7 @@ function ChooseStrategy({onChange=(e)=>{}}){
     const oldS = [{
         name: 'Default',
         func: '// Не является стратегией!'
-    },...JSON.parse(window.localStorage.getItem('strategies')||`[{"name":"previosBest","func":"return signals[index-1].bestTake"},{"name":"onlyBuy","func":"return type=='b'? 1: 0"},{"name":"Middle","func":"return signals.slice(0,index).reduce((a,s)=> a+s.bestTake,0)/index"}]`)];
+    },...JSON.parse(window.localStorage.getItem('strategies')||`[{"name":"previosBest","func":"return signals[index-1].maxTake"},{"name":"onlyBuy","func":"return type=='b'? 1: 0"},{"name":"Middle","func":"return signals.slice(0,index).reduce((a,s)=> a+s.maxTake,0)/index"}]`)];
     const [strategies, setStrategies] = useState(oldS);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
 
@@ -540,7 +540,7 @@ function StrategyAbout(){
             <span style={{whiteSpace: 'pre-wrap', fontSize: '1rem', color: 'wheat'}}>
 {`
 getProfit(...signal){
-    let take = signals[index-1].bestTake
+    let take = signals[index-1].maxTake
     return take
 }
 `}
@@ -557,7 +557,7 @@ signal = {'{'}
 <br />{'        '}high: <span style={{color: 'rgb(199,199,197'}}>число, максимальная цена за все время, </span>
 <br />{'        '}low: <span style={{color: 'rgb(199,199,197'}}>число, минимальная цена за все время,</span>
 <br />{'    '}{'},'}
-<br />{'    '}bestTake: <span style={{color: 'rgb(199,199,197'}}>число от 0 до 1, самый лучший процент который можно было бы получить в идиальных условиях,</span>
+<br />{'    '}maxTake: <span style={{color: 'rgb(199,199,197'}}>число от 0 до 1, самый лучший процент который можно было бы получить в идиальных условиях,</span>
 <br />{'    '}signals: <span style={{color: 'rgb(199,199,197'}}>массив всех сигналов (сортирован в хронологическом порядке),</span>
 <br />{'    '}index: <span style={{color: 'rgb(199,199,197'}}>число, индекс сигнала в массиве (signals),</span>
 <br />{'    '}candles: <span style={{color: 'rgb(199,199,197'}}>массив свечей от свечи с сигналом до конца диапосона, где свеча - {'{'}</span>

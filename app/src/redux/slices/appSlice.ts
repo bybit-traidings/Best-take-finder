@@ -31,13 +31,13 @@ export const getChart = createAsyncThunk(
               const signal = {
                 type: s[0].type,
                 price: {input: s[0].close, output: s.slice(-1)[0].close, high: Math.max(...s.slice(1).map(it=>it.high),s[0].close), low: Math.min(...s.slice(1).map(it=>it.low),s[0].close)},
-                bestTake: calc(s[0].type,s[0].close,(s[0].type === 'b'?Math.max(...s.slice(1).map(it=>it.high),s[0].close):Math.min(...s.slice(1).map(it=>it.low),s[0].close))),
+                maxTake: calc(s[0].type,s[0].close,(s[0].type === 'b'?Math.max(...s.slice(1).map(it=>it.high),s[0].close):Math.min(...s.slice(1).map(it=>it.low),s[0].close))),
                 index: i,
                 signals: signals.map(s=>(
                   {
                     type: s[0].type,
-                    price: {input: s[0].open, output: s.slice(-1)[0].close, high: Math.max(...s.map(it=>it.high),s[0].close), low: Math.min(...s.map(it=>it.low),s[0].close)},
-                    bestTake: calc(s[0].type,s[0].open,(s[0].type === 'b'?Math.max(...s.map(it=>it.high),s[0].close):Math.min(...s.map(it=>it.low),s[0].close))),
+                    price: {input: s[0].close, output: s.slice(-1)[0].close, high: Math.max(...s.map(it=>it.high),s[0].close), low: Math.min(...s.map(it=>it.low),s[0].close)},
+                    maxTake: calc(s[0].type,s[0].close,(s[0].type === 'b'?Math.max(...s.slice(1).map(it=>it.high),s[0].close):Math.min(...s.slice(1).map(it=>it.low),s[0].close))),
                     index: i,
                     candles: s.map((c,i) => ({
                       price: {input: c.open, output: c.close, high: c.high, low: c.low},
