@@ -411,7 +411,7 @@ function ChooseStrategy({onChange=(e)=>{}}){
     const oldS = [{
         name: 'Default',
         func: '// Не является стратегией!'
-    },...JSON.parse(window.localStorage.getItem('strategies')||`[{"name":"previosBest","func":"return signals[index-1].bestTake"},{"name":"Middle","func":"return signals.slice(0,index).reduce((a,s)=> a+s.bestTake,0)/index"},{"name":"onlyBuy","func":"return type=="b"? 1: 0"}]`)];
+    },...JSON.parse(window.localStorage.getItem('strategies')||`[{"name":"previosBest","func":"return signals[index-1].bestTake"},{"name":"onlyBuy","func":"return type=='b'? 1: 0"},{"name":"Middle","func":"return signals.slice(0,index).reduce((a,s)=> a+s.bestTake,0)/index"}]`)];
     const [strategies, setStrategies] = useState(oldS);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
 
