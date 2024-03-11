@@ -43,9 +43,11 @@ export default function Hints({top, right, left, bottom, xCenter, yCenter}:{top?
             style={{
                 position: 'fixed',
                 // padding: '1em',
+                overflowY: 'auto',
                 ...position
             }}
         >
+            
             {hints.map(hint => <div key={hint.text}
                 style={{
                     margin: '0.5em 0',

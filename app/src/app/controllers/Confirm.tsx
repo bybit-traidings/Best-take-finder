@@ -3,7 +3,7 @@ import Button from "../components/pices/Button"
 
 export default function Confirm(props:{
     open: boolean,
-    setOpen(open: boolean): void,
+    close(): void,
     text?: string,
     subtext?: string,
     action(...args): void
@@ -11,7 +11,7 @@ export default function Confirm(props:{
 
     const yesHandler = () => {
         props.action();
-        props.setOpen(false);
+        props.close();
     }
 
     return<>
@@ -32,7 +32,7 @@ export default function Confirm(props:{
                 <h5>{props.subtext||''}</h5>
                 <div style={{marginTop: '2rem', display: 'flex', justifyContent: 'space-around', alignItems: 'start'}}>
                     <Button text='Yes' width='5rem' onClick={yesHandler} />
-                    <Button text='No' width='5rem' background='rgb(84, 0, 92)' onClick={()=>{props.setOpen(false);}} />
+                    <Button text='No' width='5rem' background='rgb(84, 0, 92)' onClick={()=>{props.close();}} />
                 </div>
             </div>
         </div>
