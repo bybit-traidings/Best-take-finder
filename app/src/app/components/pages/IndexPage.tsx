@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Pop from "../../controllers/Pop";
 import Confirm from "../../controllers/Confirm";
 import Button from "../pices/Button";
+import Select from "../pices/Select";
 import useTo from "../../controllers/hooks/useTo";
 // @ts-ignore
 // import backgroundImage from '../../../assets/6.jpg';
@@ -20,11 +21,25 @@ export default function IndexPage(){
     const dispatch = useAppDispatch();
     const {chart} = useAppSelector(s=>s.app)
     const to = useTo({});
-    const [form, setForm] = useState({diaposone: '1', risk: 0.5, history: '', strategy: {name: 'Default'}, commission: '0.0'});
+    const dRef = useRef(null);
+
+    const [form, setForm] = useState({
+        diaposone: '1', 
+        risk: 0.5, 
+        history: '',
+        range: {
+            start: Date.now()-365*24*60*60*1000,
+            end: new Date(new Date(Date.now()+24*60*60*1000).toISOString().split('T')[0]).getTime()
+        }, 
+        group: 'calendar',
+        strategy: {name: 'Default'}, 
+        commission: '0.0'
+    });
     const [choose, setChoose] = useState<any[]>([]);
     const [month, setMonth] = useState(-1);
     const [hoverSm, setHoverSm] = useState(-1);
     const [hoverBig, setHoverBig] = useState(-1);
+   
 
     
     useEffect(function(){
@@ -37,8 +52,12 @@ export default function IndexPage(){
     },[chart]);
 
     const goHandler = function(h?: string | any) {
-        let {diaposone, history} = form;
+        let {diaposone, history, range} = form;
         if(h) history = h;
+        history = history.split('\n')
+            .map(l => l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	'))
+            .filter(l=> new Date(l[0]).getTime()>=range.start-12*3600000 && new Date(l[0]).getTime()<range.end)
+            .map(l => l.join(';')).join('\n')
         diaposone = (diaposone+'')?.includes('~')? '0': diaposone;
         dispatch(getChart({...form, diaposone, history}));
         setMonth(-1);
@@ -62,21 +81,37 @@ export default function IndexPage(){
         };
         reader.readAsText(file);
     }
+
+    const changeRangeHandler = (r) => {
+        setForm(p=>({...p,range:r}));
+        goHandler();
+    }
    
-    // console.log(chart.chart.map(c=>c.type));
+    // console.log(chart.chart)//.map(c=>c.type));
 
     const tableChart = chart.chart?.length? [...chart.chart].sort((a,b)=>(new Date(b.time)).getTime()-(new Date(a.time)).getTime())
         .reduce((a,c,i)=>{
-            const transform = (({time, type, delta, proc, strategyTake})=>({
+            const transform = (({time, type, delta, proc, low, strategyTake})=>({
                 time: time.replaceAll('T',' ').replaceAll('-','.').split(':').slice(0,2).join(':'),
                 type: type=='b'? 'Buy':'Sell',
                 priceMovement: (100*delta*(type=='b'?1:-1)),
-                realTake: form.strategy.name!='Default'? 100*strategyTake -(strategyTake>0? chart.commission*100: 0) :
-                                                         100*(proc>choose[0]?.proc? choose[0]?.proc : delta)-(chart.commission*100),
-                maxTake: (100*proc)
+                realTake: form.strategy.name!='Default'? 
+                        100*strategyTake -(strategyTake>0? chart.commission*100: 0) :
+                        100*(proc>choose[0]?.proc? choose[0]?.proc : delta)-(chart.commission*100),
+                min: (100*low),
+                max: (100*proc),
             }))(c);
+
+            console.log(form.group);
             
-            return a[a.length-1]?.[0]?.time.split('.')[1] === transform.time.split('.')[1]? [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] : [...a,[transform]]
+            return form.group!=='calendar'? 
+                    new Date(a[0]?.[0]?.time).getTime()-new Date(transform.time).getTime() < a.length*24*3600*1000*(+form.group) ? 
+                        [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
+                        : [...a,[transform]]
+                    :
+                    a[a.length-1]?.[0]?.time.split('.')[1] === transform.time.split('.')[1]? 
+                        [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
+                        : [...a,[transform]]
         },[]) : []
     // console.log(tableChart);
     
@@ -132,22 +167,48 @@ export default function IndexPage(){
                 <p>
                     Загрузить историю в виде Exel таблици, например с Trading-Wiue
                     <br/>
-                    <input type="file" id="csvFile" accept=".csv" style={{marginTop: '1rem'}} 
+                    <input type="file" id="csvFile" accept=".csv" style={{margin: '0.5rem 0'}} 
                         onChange={loadFileHandler}
                     />
+                    <Textarea rows={2} 
+                        style={{margin: '0.27rem 0 1rem 0', width: '297px', maxHeight: '100px', display: 'none'}} 
+                        placeholder="history" 
+                        value={form.history}
+                        onChange={formChangeHandler}
+                    />
+                    <div style={{margin: '1rem 0 0 0', display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                        <div style={{width: '5rem', maxHeight: '26px', position: 'relative', top: '-3px'}}>    
+                            <Select 
+                                fontSize={14}
+                                name="group" 
+                                value={form.group}
+                                //@ts-ignore
+                                options={['calendar month','1 day','2 days','5 days','7 days','14 days','28 days','31 days','124 days']
+                                    .map(k=>({[k]:k.split(' ')[0]}))
+                                } 
+                                onChange={(e) => setForm(p=>({...p, group: e.target.value}))}
+                            /> 
+                        </div>
+                        <div ref={dRef} style={{width: '5rem', maxHeight: '26px', position: 'relative', top: '-3px'}}>
+                            <Button fontSize={14} color="" background={''??'rgb(84, 0, 92)'}
+                                text={'range'} 
+                                onClick={()=>to(null,{scene: 'range'})}
+                            />
+                        </div>
+                    </div>
                 </p>
-                <Textarea rows={2} 
-                    style={{margin: '0.27rem 0 1rem 0', width: '297px', maxHeight: '100px', display: 'none'}} 
-                    placeholder="history" 
-                    value={form.history}
-                    onChange={formChangeHandler}
-                />
+                <Pop scene="range" 
+                    top={(dRef?.current as any)?.offsetHeight+(dRef?.current as any)?.offsetTop+'px'} 
+                    right={window.innerWidth-(dRef?.current as any)?.offsetLeft-(dRef?.current as any)?.offsetWidth+'px'}
+                >
+                    <ChooseTimeDiaposone diaposone={form.range} onChange={changeRangeHandler} />
+                </Pop>
                 <h3>strategy</h3>
                 <p>
                     Динамический подбор тейка для каждого сигнала по формуле.   
                     *Default - без формулы. <br />
                 </p>
-                <input type="button" value={form.strategy.name} style={{minWidth: '90px', marginBottom: '1.7rem'}} 
+                <input type="button" value={form.strategy.name} style={{minWidth: '90px', marginBottom: '1rem'}} 
                     onClick={()=>to(null, {scene: "strategy"})}
                 />
                 <Pop scene="strategy" top='0' right='370px' locked><ChooseStrategy onChange={formChangeHandler} /></Pop>
@@ -341,11 +402,11 @@ export default function IndexPage(){
                             }}
                         >
                             <tr>
-                                <th style={{width: '257px'}}>Date</th>
-                                <th style={{width: '257px'}}>success</th>
-                                <th style={{width: '257px'}}>loose</th>
-                                <th style={{width: '257px'}}>realTake</th>
-                                <th style={{width: '257px'}}>maxTake</th>
+                                <th style={{width: '192px'}}>Date</th>
+                                <th style={{width: '192px'}}>success</th>
+                                <th style={{width: '192px'}}>loose</th>
+                                <th style={{width: '192px'}}>realTake</th>
+                                <th style={{maxWidth: '192px'}} colSpan={2}>maxTake</th>
                             </tr>
                         </thead>
                         <tbody style={{fontWeight: 200, fontSize: '1rem', lineHeight: '1.4rem'}}>
@@ -367,12 +428,14 @@ export default function IndexPage(){
                                         <th>{chart.filter(c=>c.realTake>0).length}</th>
                                         <th>{chart.length-chart.filter(c=>c.realTake>0).length}</th>
                                         <th>{(chart.reduce((a,c)=> c.realTake+a,0)).toFixed(2)}%</th>
-                                        <th>{(chart.reduce((a,c)=> c.maxTake+a,0)).toFixed(2)}%</th>
+                                        <th colSpan={2}>{(chart.reduce((a,c)=> c.max+a,0)).toFixed(2)}%</th>
                                         
                                 </tr>
                                 {month!==i? '' : <>
                                     <tr style={{background: 'rgb(24,24,27,1)', lineHeight: '2rem'}}>
-                                        {Object.keys(tableChart?.[0]?.[0]||{}).map(key=><th key={key}>{key}</th>)}
+                                        {Object.keys(tableChart?.[0]?.[0]||{}).map(key=> 
+                                            <th key={key}>{key}</th>
+                                        )}
                                     </tr>
                                     {(chart||[]).map((c,j)=><tr key={JSON.stringify(c)+j} 
                                         style={{ background: j===hoverSm? 'black':'rgb(24,24,27,1)' }}
@@ -383,10 +446,14 @@ export default function IndexPage(){
                                             style={{
                                                 color: key=='type'? c[key]== 'Buy'? 'teal' : 'yellow' :
                                                 ['priceMovement','realTake'].includes(key)? c[key]>0? 'green' : 'red' :
-                                                'rgb(227,227,227)'
+                                                'rgb(227,227,227)',
                                             }}
                                         >
-                                            {['priceMovement', 'realTake', 'maxTake'].includes(key)? c[key].toFixed(2)+'%' :c[key]}
+                                        {
+                                            ['priceMovement', 'realTake', 'min', 'max']
+                                            .includes(key)? c[key].toFixed(2)+'%' :
+                                            c[key]
+                                        }
                                         </th>)}
                                     </tr>)}
                                 </>}
@@ -596,3 +663,39 @@ signal = {'{'}
     </div>
 }
 
+
+
+
+
+function ChooseTimeDiaposone({close=()=>{}, onChange, diaposone}){
+    const setD = (cb) => {
+        onChange(cb(diaposone));
+    }
+    return <div 
+        style={{
+            background: 'radial-gradient(circle, rgba(0,0,0,1) 0, rgba(0,0,0,0.8) 100%)',
+            color: 'rgb(250,250,250)',
+            padding: '0.5rem 1rem 1rem',
+            position: 'relative',
+            borderRadius: '1rem ',
+            fontSize: '14px'
+        }}
+    >     
+        {'from'}
+        <Input 
+            type='date'
+            style={{width: '99px', fontSize: '14px', height: '24px', padding: '2px'}}
+            name={'start'} 
+            value={new Date(diaposone.start).toISOString().split('T')[0]}
+            onChange={(e) => setD(p=>({...p, start: new Date(e.target.value).getTime()}))}
+        />
+        {'to'}
+        <Input 
+            type='date'
+            style={{width: '99px', fontSize: '14px', height: '24px', padding: '2px'}}
+            name={'end'} 
+            value={new Date(diaposone.end-24*60*60*1000).toISOString().split('T')[0]}
+            onChange={(e) => setD(p=>({...p, end: new Date(e.target.value+-24*60*60*1000).getTime()}))}
+        />
+    </div>
+}

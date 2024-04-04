@@ -2,12 +2,12 @@ import React from "react";
 
 
 export default function Input(props: {
-    placeholder: string,
+    name: string,
+    placeholder?: string,
     onChange(e: React.ChangeEvent<HTMLInputElement>): void, 
     value?: string,
     type?: string,
     style?: React.CSSProperties,
-    name?: string,
 }){
 
     return <>

@@ -27,6 +27,7 @@ export const getChart = createAsyncThunk(
               const calc = (type,_in,out) => ((out/_in)-1)*(type === 'b'?1:-1)
               const delta = calc(s[0].type,s[0].close,s.slice(-1)[0].close);          
               const proc = calc(s[0].type,s[0].close,(s[0].type === 'b'?Math.max(...s.slice(1).map(it=>it.high),s[0].close):Math.min(...s.slice(1).map(it=>it.low),s[0].close)));
+              const low = calc(s[0].type,s[0].close,(s[0].type === 'b'?Math.min(...s.slice(1).map(it=>it.low),s[0].close):Math.max(...s.slice(1).map(it=>it.high),s[0].close)));
   
               const signal = {
                 type: s[0].type,
@@ -66,6 +67,7 @@ export const getChart = createAsyncThunk(
                 time: s[0].time,
                 delta,
                 proc,
+                low,
                 strategyTake: take==0?0:proc>take?take:delta
             }})
             .sort((a,b) => a.proc-b.proc)
