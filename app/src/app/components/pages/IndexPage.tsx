@@ -28,8 +28,8 @@ export default function IndexPage(){
         risk: 0.5, 
         history: '',
         range: {
-            start: Date.now()-365*24*60*60*1000,
-            end: new Date(new Date(Date.now()+24*60*60*1000).toISOString().split('T')[0]).getTime()
+            start: new Date('2019-12-31').getTime(),//Date.now()-365*24*60*60*1000,
+            end: new Date(new Date(Date.now()+24*60*60*1000).toISOString()).getTime()
         }, 
         group: 'calendar',
         strategy: {name: 'Default'}, 
