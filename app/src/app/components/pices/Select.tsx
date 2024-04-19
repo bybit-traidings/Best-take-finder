@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 
-export default function Button(props:{
+export default function Select(props:{
     name?: string,
     value?: string,
     color?: string,

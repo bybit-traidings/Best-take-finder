@@ -40,7 +40,10 @@ export default function IndexPage(){
     const [hoverSm, setHoverSm] = useState(-1);
     const [hoverBig, setHoverBig] = useState(-1);
    
-
+    // @ts-ignore
+    window.setHistory = function(cb: (history: string) => string){
+        goHandler(cb(form.history));
+    }
     
     useEffect(function(){
         dispatch(getChart(form));
@@ -102,7 +105,7 @@ export default function IndexPage(){
                 max: (100*proc),
             }))(c);
 
-            console.log(form.group);
+            // console.log(form.group);
             
             return form.group!=='calendar'? 
                     new Date(a[0]?.[0]?.time).getTime()-new Date(transform.time).getTime() < a.length*24*3600*1000*(+form.group) ? 
@@ -695,7 +698,7 @@ function ChooseTimeDiaposone({close=()=>{}, onChange, diaposone}){
             style={{width: '99px', fontSize: '14px', height: '24px', padding: '2px'}}
             name={'end'} 
             value={new Date(diaposone.end-24*60*60*1000).toISOString().split('T')[0]}
-            onChange={(e) => setD(p=>({...p, end: new Date(e.target.value+-24*60*60*1000).getTime()}))}
+            onChange={(e) => setD(p=>({...p, end: new Date(e.target.value).getTime()+24*60*60*1000}))}
         />
     </div>
 }
