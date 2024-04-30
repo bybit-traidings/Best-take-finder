@@ -9,28 +9,26 @@ import useTo from "../../controllers/hooks/useTo";
 import { useAppDispatch, useAppSelector } from "../../../redux/store";
 import Input from "../pices/Input";
 import Textarea from "../pices/Textarea";
-import { getChart } from "../../../redux/slices/appSlice";
+import Loading from "../pices/Loading";
+import { getCharts } from "../../../redux/slices/appSlice";
 import { removeAllHints } from "../../../redux/slices/hintsSlice";
 
 
 
-
-const lBarHeight = 80;
-
 export default function IndexPage(){
     const dispatch = useAppDispatch();
-    const {chart} = useAppSelector(s=>s.app)
+    const {charts} = useAppSelector(s=>s.app)
     const to = useTo({});
     const dRef = useRef(null);
 
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<{histories: string[]} & any>({
         diaposone: '1', 
         risk: 0.5, 
-        history: '',
+        histories: [],
         range: {
             start: new Date('2019-12-31').getTime(),//Date.now()-365*24*60*60*1000,
             end: new Date(new Date(Date.now()+24*60*60*1000).toISOString()).getTime()
-        }, 
+        },  
         group: 'calendar',
         strategy: {name: 'Default'}, 
         commission: '0.0'
@@ -39,31 +37,36 @@ export default function IndexPage(){
     const [month, setMonth] = useState(-1);
     const [hoverSm, setHoverSm] = useState(-1);
     const [hoverBig, setHoverBig] = useState(-1);
+    const [files, setFiles] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
    
     // @ts-ignore
     window.setHistory = function(cb: (history: string) => string){
-        goHandler(cb(form.history));
+        if(form.histories.length == 1) goHandler(cb(form.histories[0]));
+        else window.alert('Can not change history fore many files!');
     }
     
     useEffect(function(){
-        dispatch(getChart(form));
+        dispatch(getCharts(form));
     },[]);
     
     useEffect(()=>{
-        if(form.diaposone!==chart.d)setForm(p=>({...p, diaposone: chart.d}));
-        if(choose!==chart.favorite) setChoose([chart.favorite, chart.next]);
-    },[chart]);
+        if(form.diaposone!==charts[0]?.d) setForm(p=>({...p, diaposone: charts[0]?.d}));
+        if(choose!==charts[0]?.favorite) setChoose([charts[0]?.favorite, charts[0]?.next]);
+    },[charts[0]]);
 
-    const goHandler = function(h?: string | any) {
-        let {diaposone, history, range} = form;
-        if(h) history = h;
-        history = history.split('\n')
+    const goHandler = function(hs?: string | any) {
+        let {diaposone, histories, range} = form;
+        if(hs) histories = hs;
+        if(histories.length>2) setLoading(true);
+        (histories as string[]) = histories.map((h: string) => h.split('\n')
             .map(l => l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	'))
             .filter(l=> new Date(l[0]).getTime()>=range.start-12*3600000 && new Date(l[0]).getTime()<range.end)
-            .map(l => l.join(';')).join('\n')
+            .map(l => l.join(';')).join('\n'))
         diaposone = (diaposone+'')?.includes('~')? '0': diaposone;
-        dispatch(getChart({...form, diaposone, history}));
+        dispatch(getCharts({...form, diaposone, histories}));
         setMonth(-1);
+        setLoading(false);
     }
 
     useEffect(()=>{
@@ -74,25 +77,29 @@ export default function IndexPage(){
         setForm(p=>({...p, [e.target.name]: e.target.value}));
     }
 
-    const loadFileHandler = (event) => {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const contents = event.target?.result;
-            goHandler(contents);
-            setForm(p=>({...p, history: (contents as string)}));
-        };
-        reader.readAsText(file);
+    const loadFileHandler = async (event) => {
+        const files = event.target.files;
+        if(files.length>3) setLoading(true);
+        const histories = await Promise.all([...files].map(file=>new Promise((res)=>{
+            const reader = new FileReader();
+            reader.onload = (event) => res(event.target?.result);
+            reader.readAsText(file);
+        })));
+
+        goHandler(histories);
+        setFiles([...files].map(f=>f.name));
+        setForm(p=>({...p, histories}));
     }
 
     const changeRangeHandler = (r) => {
+        if(files.length>3) setLoading(true);
         setForm(p=>({...p,range:r}));
         goHandler();
     }
    
     // console.log(chart.chart)//.map(c=>c.type));
 
-    const tableChart = chart.chart?.length? [...chart.chart].sort((a,b)=>(new Date(b.time)).getTime()-(new Date(a.time)).getTime())
+    const tableCharts = charts.map(chart => chart.chart?.length? [...chart.chart].sort((a,b)=>(new Date(b.time)).getTime()-(new Date(a.time)).getTime())
         .reduce((a,c,i)=>{
             const transform = (({time, type, delta, proc, low, strategyTake})=>({
                 time: time.replaceAll('T',' ').replaceAll('-','.').split(':').slice(0,2).join(':'),
@@ -107,16 +114,20 @@ export default function IndexPage(){
 
             // console.log(form.group);
             
-            return form.group!=='calendar'? 
-                    new Date(a[0]?.[0]?.time).getTime()-new Date(transform.time).getTime() < a.length*24*3600*1000*(+form.group) ? 
-                        [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
-                        : [...a,[transform]]
+            return  charts.length>1? [[...(a[0]||[]), transform]]
                     :
-                    a[a.length-1]?.[0]?.time.split('.')[1] === transform.time.split('.')[1]? 
-                        [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
-                        : [...a,[transform]]
-        },[]) : []
-    // console.log(tableChart);
+                        form.group!=='calendar'?
+                        new Date(a[0]?.[0]?.time).getTime()-new Date(transform.time).getTime() < a.length*24*3600*1000*(+form.group) ? 
+                            [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
+                            : [...a,[transform]]
+                        :
+                        a[a.length-1]?.[0]?.time.split('.')[1] === transform.time.split('.')[1]? 
+                            [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
+                            : [...a,[transform]]
+        },[]) : [])
+
+
+    console.log(charts, form.histories.length);
     
    
     return <>
@@ -170,14 +181,15 @@ export default function IndexPage(){
                 <p>
                     Загрузить историю в виде Exel таблици, например с Trading-Wiue
                     <br/>
-                    <input type="file" id="csvFile" accept=".csv" style={{margin: '0.5rem 0'}} 
+                    <input type="file" id="csvFile" accept=".csv" multiple
+                        style={{margin: '0.5rem 0'}} 
                         onChange={loadFileHandler}
                     />
                     <Textarea rows={2} 
                         style={{margin: '0.27rem 0 1rem 0', width: '297px', maxHeight: '100px', display: 'none'}} 
                         placeholder="history" 
-                        value={form.history}
-                        onChange={formChangeHandler}
+                        value={form.histories[0]+''}
+                        onChange={(e) => formChangeHandler({target: {...e.target, value: [e.target.value]}})}
                     />
                     <div style={{margin: '1rem 0 0 0', display: 'flex', gap: '1rem', alignItems: 'center'}}>
                         <div style={{width: '5rem', maxHeight: '26px', position: 'relative', top: '-3px'}}>    
@@ -238,126 +250,132 @@ export default function IndexPage(){
             </div>
             <div data-name='left'
                 style={{
-                    width: `calc(100vw - 370px - ${lBarHeight}px)`,
+                    width: `calc(100vw - 370px)`,
                     height: '100vh',
-                    marginLeft: `${lBarHeight}px`,
                     overflow: 'hidden',
                     overflowY: 'auto',
                 }}
             >
-                {form.strategy.name=='Default'? <div style={{
-                            position: 'sticky',
-                            top: '-260px',
-                        }}>
-                    <div data-name='chart'>
-                        <div data-name='profit'style={{
-                            height: '260px',
-                            background: 'rgb(24,24,27)',
-                            borderBottom: '5px rgb(0,0,0) solid',
-                        }}>
+                {
+                charts.length<2?
+                    form.strategy.name=='Default'? 
+                    <div style={{
+                        position: 'sticky',
+                        top: '-260px',
+                    }}>
+                        <div data-name='chart'>
                             <div data-name='profit'style={{
-                                height: '210px',
+                                height: '260px',
+                                background: 'rgb(24,24,27)',
+                                borderBottom: '5px rgb(0,0,0) solid',
+                            }}>
+                                <div data-name='profit'style={{
+                                    height: '210px',
+                                    display: 'flex',
+                                    alignItems: 'end',
+                                    justifyContent: 'space-evenly',
+                                }}>
+                                    {charts[0]?.chart.map(c => <div key={JSON.stringify(c)}
+                                        style={{
+                                            width: `${((window.innerWidth-367)/charts[0].chart.length)}px`,
+                                            height: c.profit<0?0:`${c.profit*(190/Math.max(...charts[0].chart.map(c => c.profit)))}px`,
+                                            background: charts[0].favorite?.res == c?.res? 'rgba(196, 121, 255, 0.97)' : 'rgba(60, 250, 200,0.75)',//'rgba(0, 197, 125, 0.97)',
+                                            borderRight: '1px black solid'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: `${((window.innerWidth-367)/charts[0].chart.length)}px`,
+                                            height: c.profit<0?0:`${c.risk*100}%`,
+                                            background: 'rgba(197, 7, 9, 0.57)',
+                                            borderRight: '1px black solid'
+                                        }}/>
+                                    </div>)}
+                                </div>
+                                <div data-name='loose-profit'style={{
+                                    height: '50px',
+                                    display: 'flex',
+                                    alignItems: 'start',
+                                    justifyContent: 'space-evenly',
+                                    background: 'black'
+                                }}>
+                                    {charts[0]?.chart.map(c => <div key={JSON.stringify(c)}
+                                        style={{
+                                            width: `${((window.innerWidth-367)/charts[0].chart.length)}px`,
+                                            height: c.profit>0?0:`${(-c.profit)*(50/Math.max(...charts[0].chart.map(c => Math.abs(c.profit))))}px`,
+                                            background: charts[0].favorite?.res == c?.res? 'rgba(196, 121, 255, 0.97)' : 'rgba(197, 7, 9, 0.97)',
+                                            borderRight: '1px black solid'
+                                        }}
+                                    >
+                                    </div>)}
+                                </div>
+                            </div>
+
+                        </div>
+                        <div  data-name='proc'>
+                            <div data-name='proc-color' style={{
+                                height: '75px',
+                                background: 'rgb(0,0,0)',
                                 display: 'flex',
-                                alignItems: 'end',
+                                alignItems: 'center',
                                 justifyContent: 'space-evenly',
                             }}>
-                                {chart.chart.map(c => <div key={JSON.stringify(c)}
+                                {charts[0]?.chart.map(c => <div key={JSON.stringify(c)}
                                     style={{
-                                        width: `${((window.innerWidth-367-lBarHeight)/chart.chart.length)}px`,
-                                        height: c.profit<0?0:`${c.profit*(190/Math.max(...chart.chart.map(c => c.profit)))}px`,
-                                        background: chart.favorite?.res == c?.res? 'rgba(196, 121, 255, 0.97)' : 'rgba(60, 250, 200,0.75)',//'rgba(0, 197, 125, 0.97)',
-                                        borderRight: '1px black solid'
+                                        width: `${((window.innerWidth-367)/charts[0].chart.length)}px`,
+                                        height: `${c?.res<0?4:c?.res*(52/Math.max(...charts[0].chart.map(c => c?.res),0.0001))}px`,
+                                        background: c?.res !== choose[0]?.res? 'rgba(0, 97, 97, 0.7)' : 'rgba(196, 121, 255, 0.97)',
                                     }}
                                 >
-                                    <div style={{
-                                        width: `${((window.innerWidth-367-lBarHeight)/chart.chart.length)}px`,
-                                        height: c.profit<0?0:`${c.risk*100}%`,
-                                        background: 'rgba(197, 7, 9, 0.57)',
-                                        borderRight: '1px black solid'
-                                    }}/>
                                 </div>)}
                             </div>
-                            <div data-name='loose-profit'style={{
-                                height: '50px',
+
+                            <div data-name='proc-nums' style={{
+                                height: '0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-evenly',
+                                position: 'relative',
+                                bottom: '37px',
+                                color: 'white',
+                                fontWeight: 600
+                            }}>
+                                {charts[0]?.chart.map((c,i) => <div key={JSON.stringify(c)}
+                                    style={{width: `${((window.innerWidth-367)/charts[0].chart.length)}px`}}
+                                >
+                                    {
+                                        (i&&i%Math.ceil(charts[0].chart.length/24)!==0) ? ''
+                                        :`${(c.proc*100).toFixed(2)}%`
+                                    }
+                                </div>)}
+                            </div>
+
+                            <div data-name='proc-pickers' style={{
+                                height: '0',
                                 display: 'flex',
                                 alignItems: 'start',
                                 justifyContent: 'space-evenly',
-                                background: 'black'
+                                position: 'relative',
+                                bottom: '75px',
                             }}>
-                                {chart.chart.map(c => <div key={JSON.stringify(c)}
+                                {charts[0]?.chart.map((c,i,chart) => <div key={JSON.stringify(c)}
                                     style={{
-                                        width: `${((window.innerWidth-367-lBarHeight)/chart.chart.length)}px`,
-                                        height: c.profit>0?0:`${(-c.profit)*(50/Math.max(...chart.chart.map(c => Math.abs(c.profit))))}px`,
-                                        background: chart.favorite?.res == c?.res? 'rgba(196, 121, 255, 0.97)' : 'rgba(197, 7, 9, 0.97)',
-                                        borderRight: '1px black solid'
+                                        width: `${((window.innerWidth-367)/chart.length)}px`,
+                                        height: '75px',
+                                        cursor: 'pointer', //196, 121, 255
                                     }}
+                                    onClick={()=>setChoose([c, chart[i+1]])}
                                 >
                                 </div>)}
                             </div>
                         </div>
-
                     </div>
-                    <div  data-name='proc'>
-                        <div data-name='proc-color' style={{
-                            height: '75px',
-                            background: 'rgb(0,0,0)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-evenly',
-                        }}>
-                            {chart.chart.map(c => <div key={JSON.stringify(c)}
-                                style={{
-                                    width: `${((window.innerWidth-367-lBarHeight)/chart.chart.length)}px`,
-                                    height: `${c?.res<0?4:c?.res*(52/Math.max(...chart.chart.map(c => c?.res),0.0001))}px`,
-                                    background: c?.res !== choose[0]?.res? 'rgba(0, 97, 97, 0.7)' : 'rgba(196, 121, 255, 0.97)',
-                                }}
-                            >
-                            </div>)}
-                        </div>
-
-                        <div data-name='proc-nums' style={{
-                            height: '0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-evenly',
-                            position: 'relative',
-                            bottom: '37px',
-                            color: 'white',
-                            fontWeight: 600
-                        }}>
-                            {chart.chart.map((c,i) => <div key={JSON.stringify(c)}
-                                style={{width: `${((window.innerWidth-367-lBarHeight)/chart.chart.length)}px`}}
-                            >
-                                {
-                                    (i&&i%Math.ceil(chart.chart.length/24)!==0) ? ''
-                                    :`${(c.proc*100).toFixed(2)}%`
-                                }
-                            </div>)}
-                        </div>
-
-                        <div data-name='proc-pickers' style={{
-                            height: '0',
-                            display: 'flex',
-                            alignItems: 'start',
-                            justifyContent: 'space-evenly',
-                            position: 'relative',
-                            bottom: '75px',
-                        }}>
-                            {chart.chart.map((c,i,chart) => <div key={JSON.stringify(c)}
-                                style={{
-                                    width: `${((window.innerWidth-367-lBarHeight)/chart.length)}px`,
-                                    height: '75px',
-                                    cursor: 'pointer', //196, 121, 255
-                                }}
-                                onClick={()=>setChoose([c, chart[i+1]])}
-                            >
-                            </div>)}
-                        </div>
+                    :
+                    <div style={{height: '220px', display: 'flex',  justifyContent: 'center', alignItems: 'center', padding: '2rem',  background: 'rgb(24,24,27)',}}>
+                        <h3>Results for {form.strategy.name} strategy</h3>
                     </div>
-                </div>
                 :
                 <div style={{height: '220px', display: 'flex',  justifyContent: 'center', alignItems: 'center', padding: '2rem',  background: 'rgb(24,24,27)',}}>
-                    <h3>Results for {form.strategy.name} strategy</h3>
+                    <h3>Inspect files{form.strategy.name? ': '+form.strategy.name: ''}</h3>
                 </div>
                 }
                 <div data-name='results'
@@ -367,29 +385,30 @@ export default function IndexPage(){
                         margin: '2rem'
                     }}
                 >
-                    <div style={{display: 'flex', justifyContent: 'center', margin: '1rem auto', fontWeight: 800}}>
-                        {form.strategy.name!='Default'?
-                        <h5>
-                            strategy: {form.strategy.name} 
-                            <span style={{margin: '0 1rem'}}></span>
-                            profit: {(tableChart.reduce((a,cc) => [...a,...cc],[]).reduce((a,c)=>a+c.realTake,0)).toFixed(2)}%
-                            <span style={{margin: '0 1rem'}}></span>
-                            success: {tableChart.reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>chart.commission*100).length}
-                            <span style={{margin: '0 1rem'}}></span>
-                            loose: {tableChart.reduce((a,cc) => [...a,...cc],[]).length-tableChart.reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>chart.commission*100).length}
-                        </h5>
-                        :
-                        <h5>
-                            take: {(choose[0]?.proc*100).toFixed(2)}% {'<>'} {((choose[1]||choose[0])?.proc*100).toFixed(2)}%
-                            <span style={{margin: '0 1rem'}}></span>
-                            profit: {(choose[0]?.profit*100).toFixed(2)}%
-                            <span style={{margin: '0 1rem'}}></span>
-                            nForecast: {(choose[0]?.profit*100*(1-choose[0]?.risk)).toFixed(2)}%
-                            <span style={{margin: '0 1rem'}}></span>
-                            success: {chart.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>chart.commission).length}
-                            <span style={{margin: '0 1rem'}}></span>
-                            loose: {chart.chart.length-chart.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>chart.commission).length}
-                        </h5>
+                   <div style={{display: 'flex', justifyContent: 'center', margin: '1rem auto', fontWeight: 800}}>
+                        {   charts.length>1? '' :
+                            form.strategy.name!='Default'?
+                            <h5>
+                                strategy: {form.strategy.name} 
+                                <span style={{margin: '0 1rem'}}></span>
+                                profit: {(tableCharts[0].reduce((a,cc) => [...a,...cc],[]).reduce((a,c)=>a+c.realTake,0)).toFixed(2)}%
+                                <span style={{margin: '0 1rem'}}></span>
+                                success: {tableCharts[0].reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>charts[0].commission*100).length}
+                                <span style={{margin: '0 1rem'}}></span>
+                                loose: {tableCharts[0].reduce((a,cc) => [...a,...cc],[]).length-tableCharts[0].reduce((a,cc) => [...a,...cc],[]).filter(c=>c.realTake>charts[0].commission*100).length}
+                            </h5>
+                            :
+                            <h5>
+                                take: {(choose[0]?.proc*100).toFixed(2)}% {'<>'} {((choose[1]||choose[0])?.proc*100).toFixed(2)}%
+                                <span style={{margin: '0 1rem'}}></span>
+                                profit: {(choose[0]?.profit*100).toFixed(2)}%
+                                <span style={{margin: '0 1rem'}}></span>
+                                nForecast: {(choose[0]?.profit*100*(1-choose[0]?.risk)).toFixed(2)}%
+                                <span style={{margin: '0 1rem'}}></span>
+                                success: {charts[0]?.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>charts[0].commission).length}
+                                <span style={{margin: '0 1rem'}}></span>
+                                loose: {charts[0]?.chart.length-charts[0]?.chart.filter(c=>(c.proc>choose[0]?.proc? choose[0]?.proc : c.delta)>charts[0].commission).length}
+                            </h5>
                         }
                     </div>
 
@@ -405,64 +424,69 @@ export default function IndexPage(){
                             }}
                         >
                             <tr>
-                                <th style={{width: '192px'}}>Date</th>
+                                <th style={{width: '192px'}}>{tableCharts.length>1? 'File':'Date'}</th>
                                 <th style={{width: '192px'}}>success</th>
                                 <th style={{width: '192px'}}>loose</th>
                                 <th style={{width: '192px'}}>realTake</th>
                                 <th style={{maxWidth: '192px'}} colSpan={2}>maxTake</th>
                             </tr>
                         </thead>
-                        <tbody style={{fontWeight: 200, fontSize: '1rem', lineHeight: '1.4rem'}}>
-                            {(tableChart||[]).map((chart,i)=> <>
-                                <tr key={i} 
-                                    style={{
-                                        borderBottom: '1px rgb(72,72,72) solid',
-                                        cursor: 'pointer',
-                                        background: month==i?'rgb(24,24,27,1)': hoverBig==i? 'rgba(9,9,9,0.42)': '',
-                                        lineHeight: '3.4rem',
-                                        fontSize: '1rem'
-                                    }}
-                                    onClick={()=>{setMonth(p=>p==i?-1:i)}}
-                                    onMouseEnter={()=>setHoverBig(i)}
-                                    onMouseLeave={()=>setHoverBig(-1)}
-                                > 
-                                    
-                                        <th>{(new Date(chart[0].time)).toString().split(' ')[1]+' '+chart[0].time.split('.')[0]}</th>
-                                        <th>{chart.filter(c=>c.realTake>0).length}</th>
-                                        <th>{chart.length-chart.filter(c=>c.realTake>0).length}</th>
-                                        <th>{(chart.reduce((a,c)=> c.realTake+a,0)).toFixed(2)}%</th>
-                                        <th colSpan={2}>{(chart.reduce((a,c)=> c.max+a,0)).toFixed(2)}%</th>
-                                        
-                                </tr>
-                                {month!==i? '' : <>
-                                    <tr style={{background: 'rgb(24,24,27,1)', lineHeight: '2rem'}}>
-                                        {Object.keys(tableChart?.[0]?.[0]||{}).map(key=> 
-                                            <th key={key}>{key}</th>
-                                        )}
+                        {tableCharts.map((tableChart,j)=> 
+                            <tbody style={{fontWeight: 200, fontSize: '1rem', lineHeight: '1.4rem'}}>
+                                {(tableChart||[]).map((chart,i)=> <>
+                                    <tr key={i} 
+                                        style={{
+                                            borderBottom: '1px rgb(72,72,72) solid',
+                                            cursor: 'pointer',
+                                            background: month==(tableCharts.length>1? j:i)?'rgb(24,24,27,1)': hoverBig==(tableCharts.length>1? j:i)? 'rgba(9,9,9,0.42)': '',
+                                            lineHeight: '3.4rem',
+                                            fontSize: '1rem'
+                                        }}
+                                        onClick={()=>{setMonth(p=>p==(tableCharts.length>1? j:i)?-1:(tableCharts.length>1? j:i))}}
+                                        onMouseEnter={()=>setHoverBig(tableCharts.length>1? j:i)}
+                                        onMouseLeave={()=>setHoverBig(-1)}
+                                    > 
+                                            {tableCharts.length>1? 
+                                            <th>{files[j].slice(0,20)+(files[j].length<20? '':'...')}</th>
+                                            :
+                                            <th>{(new Date(chart[0].time)).toString().split(' ')[1]+' '+chart[0].time.split('.')[0]}</th>
+                                            }
+                                            <th>{chart.filter(c=>c.realTake>0).length}</th>
+                                            <th>{chart.length-chart.filter(c=>c.realTake>0).length}</th>
+                                            <th>{(chart.reduce((a,c)=> c.realTake+a,0)).toFixed(2)}%</th>
+                                            <th colSpan={2}>{(chart.reduce((a,c)=> c.max+a,0)).toFixed(2)}%</th>
+                                            
                                     </tr>
-                                    {(chart||[]).map((c,j)=><tr key={JSON.stringify(c)+j} 
-                                        style={{ background: j===hoverSm? 'black':'rgb(24,24,27,1)' }}
-                                        onMouseEnter={()=>setHoverSm(j)}
-                                        onMouseLeave={()=>setHoverSm(-1)}
-                                    >   
-                                        {Object.keys(c||{}).map(key=><th key={key} 
-                                            style={{
-                                                color: key=='type'? c[key]== 'Buy'? 'teal' : 'yellow' :
-                                                ['priceMovement','realTake'].includes(key)? c[key]>0? 'green' : 'red' :
-                                                'rgb(227,227,227)',
-                                            }}
-                                        >
-                                        {
-                                            ['priceMovement', 'realTake', 'min', 'max']
-                                            .includes(key)? c[key].toFixed(2)+'%' :
-                                            c[key]
-                                        }
-                                        </th>)}
-                                    </tr>)}
-                                </>}
-                            </>
-                            )}
-                        </tbody>    
+                                    {month!==(tableCharts.length>1? j:i)? '' : <>
+                                        <tr style={{background: 'rgb(24,24,27,1)', lineHeight: '2rem'}}>
+                                            {Object.keys(tableChart?.[0]?.[0]||{}).map(key=> 
+                                                <th key={key}>{key}</th>
+                                            )}
+                                        </tr>
+                                        {(chart||[]).map((c,j)=><tr key={JSON.stringify(c)+j} 
+                                            style={{ background: j===hoverSm? 'black':'rgb(24,24,27,1)' }}
+                                            onMouseEnter={()=>setHoverSm(j)}
+                                            onMouseLeave={()=>setHoverSm(-1)}
+                                        >   
+                                            {Object.keys(c||{}).map(key=><th key={key} 
+                                                style={{
+                                                    color: key=='type'? c[key]== 'Buy'? 'teal' : 'yellow' :
+                                                    ['priceMovement','realTake'].includes(key)? c[key]>0? 'green' : 'red' :
+                                                    'rgb(227,227,227)',
+                                                }}
+                                            >
+                                            {
+                                                ['priceMovement', 'realTake', 'min', 'max']
+                                                .includes(key)? c[key].toFixed(2)+'%' :
+                                                c[key]
+                                            }
+                                            </th>)}
+                                        </tr>)}
+                                    </>}
+                                </>
+                                )}
+                            </tbody>    
+                        )}
                     </table>
                 </div>
                 <div style={{height: '6rem'}}></div>
@@ -470,8 +494,9 @@ export default function IndexPage(){
             
         </div>
         <Pop scene="strategyAbout" top='0' right='370px'><StrategyAbout /></Pop>
-
+        {loading? <Loading /> : ''}
     </>
+
 }
 
 

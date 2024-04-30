@@ -1,17 +1,11 @@
-import React, { useEffect } from "react";
+import React from "react";
 import Router from "./controllers/Router"
 import Hints from "./controllers/Hints"
 import IndexPage from "./components/pages/IndexPage";
-import Bar from "./controllers/Bar";
-import { useAppDispatch, useAppSelector } from "../redux/store";
-import useTo from "./controllers/hooks/useTo";
+import Reverser from "./components/pages/Reverser";
 // import { useParams } from "react-router-dom";
 
 export default function Index() {
-  const to = useTo({});
-  // let {lang, ...ps} = useParams();
-  const dispatch = useAppDispatch();
-  const app = useAppSelector(s=>s.app);
 
   
   
@@ -23,10 +17,11 @@ export default function Index() {
       {/* <Bar exeptions={['/']}/> */}
         
       <Router 
-        index="/Best-take-finder" 
+        index="/F" 
         toSign='/' 
         roots={{
-          '/Best-take-finder': <IndexPage />
+          '/F': <IndexPage />,
+          '/R': <Reverser />
         }}
         authRoots={{
           // '/news': <News />,
