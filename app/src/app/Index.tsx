@@ -17,11 +17,11 @@ export default function Index() {
       {/* <Bar exeptions={['/']}/> */}
         
       <Router 
-        index="/F" 
+        index="/Best-take-finder/F" 
         toSign='/' 
         roots={{
-          '/F': <IndexPage />,
-          '/R': <Reverser />
+          '/Best-take-finder/F': <IndexPage />,
+          '/Best-take-finder/R': <Reverser />
         }}
         authRoots={{
           // '/news': <News />,
