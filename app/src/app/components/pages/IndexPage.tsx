@@ -38,6 +38,7 @@ export default function IndexPage(){
     const [hoverSm, setHoverSm] = useState(-1);
     const [hoverBig, setHoverBig] = useState(-1);
     const [files, setFiles] = useState<string[]>([]);
+    const [filePreview, setFilePreview] = useState(-1);
     const [loading, setLoading] = useState(false);
    
     // @ts-ignore
@@ -53,7 +54,7 @@ export default function IndexPage(){
     useEffect(()=>{
         if(form.diaposone!==charts[0]?.d) setForm(p=>({...p, diaposone: charts[0]?.d}));
         if(choose!==charts[0]?.favorite) setChoose([charts[0]?.favorite, charts[0]?.next]);
-    },[charts[0]]);
+    },[JSON.stringify(charts)]);
 
     const goHandler = function(hs?: string | any) {
         let {diaposone, histories, range} = form;
@@ -114,9 +115,9 @@ export default function IndexPage(){
 
             // console.log(form.group);
             
-            return  charts.length>1? [[...(a[0]||[]), transform]]
-                    :
-                        form.group!=='calendar'?
+            // return charts.length>1? [[...(a[0]||[]), transform]]
+            //         :
+            return      form.group!=='calendar'?
                         new Date(a[0]?.[0]?.time).getTime()-new Date(transform.time).getTime() < a.length*24*3600*1000*(+form.group) ? 
                             [...a.slice(0,a.length-1),[...a[a.length-1],transform] ] 
                             : [...a,[transform]]
@@ -126,6 +127,7 @@ export default function IndexPage(){
                             : [...a,[transform]]
         },[]) : [])
 
+    const joinTableCharts = (tc) => tc.reduce((a,c) => [...a,...c],[])
 
     console.log(charts, form.histories.length);
     
@@ -385,7 +387,7 @@ export default function IndexPage(){
                         margin: '2rem'
                     }}
                 >
-                   <div style={{display: 'flex', justifyContent: 'center', margin: '1rem auto', fontWeight: 800}}>
+                    <div style={{display: 'flex', justifyContent: 'center', margin: '1rem auto', fontWeight: 800}}>
                         {   charts.length>1? '' :
                             form.strategy.name!='Default'?
                             <h5>
@@ -431,62 +433,78 @@ export default function IndexPage(){
                                 <th style={{maxWidth: '192px'}} colSpan={2}>maxTake</th>
                             </tr>
                         </thead>
+                        <tbody style={{fontWeight: 200, fontSize: '1rem', lineHeight: '1.4rem'}}>
                         {tableCharts.map((tableChart,j)=> 
-                            <tbody style={{fontWeight: 200, fontSize: '1rem', lineHeight: '1.4rem'}}>
-                                {(tableChart||[]).map((chart,i)=> <>
-                                    <tr key={i} 
+                            <FilePreviewer 
+                                isOpen={files.length<=1||j==filePreview}
+                                head={files.length<=1? '' : <tr key={j} 
                                         style={{
                                             borderBottom: '1px rgb(72,72,72) solid',
                                             cursor: 'pointer',
-                                            background: month==(tableCharts.length>1? j:i)?'rgb(24,24,27,1)': hoverBig==(tableCharts.length>1? j:i)? 'rgba(9,9,9,0.42)': '',
+                                            background: filePreview==j?'rgb(4,4,7,1)': filePreview<0 && hoverBig==1000+j? 'rgba(9,9,9,0.42)': '',
                                             lineHeight: '3.4rem',
                                             fontSize: '1rem'
                                         }}
-                                        onClick={()=>{setMonth(p=>p==(tableCharts.length>1? j:i)?-1:(tableCharts.length>1? j:i))}}
-                                        onMouseEnter={()=>setHoverBig(tableCharts.length>1? j:i)}
+                                        onClick={()=>{setFilePreview(p=>p==j?-1:j)}}
+                                        onMouseEnter={()=>setHoverBig(1000+j)}
                                         onMouseLeave={()=>setHoverBig(-1)}
                                     > 
-                                            {tableCharts.length>1? 
-                                            <th>{files[j].slice(0,20)+(files[j].length<20? '':'...')}</th>
-                                            :
+                                        <th>{files[j].slice(0,20)+(files[j].length<20? '':'...')}</th>
+                                        <th>{joinTableCharts(tableChart).filter(c=>c.realTake>0).length}</th>
+                                        <th>{joinTableCharts(tableChart).length-joinTableCharts(tableChart).filter(c=>c.realTake>0).length}</th>
+                                        <th>{(joinTableCharts(tableChart).reduce((a,c)=> c.realTake+a,0)).toFixed(2)}%</th>
+                                        <th colSpan={2}>{(joinTableCharts(tableChart).reduce((a,c)=> c.max+a,0)).toFixed(2)}%</th>
+                                    </tr>}
+                                body={(tableChart||[]).map((chart,i)=> <>
+                                        <tr key={i} 
+                                            style={{
+                                                borderBottom: '1px rgb(72,72,72) solid',
+                                                cursor: 'pointer',
+                                                background: month==i?'rgb(24,24,27,1)': hoverBig==i? 'rgba(9,9,9,0.42)': files.length>1? 'rgb(24,24,27,0.7)' : '',
+                                                lineHeight: '3.4rem',
+                                                fontSize: '1rem'
+                                            }}
+                                            onClick={()=>{setMonth(p=>p==i?-1:i)}}
+                                            onMouseEnter={()=>setHoverBig(i)}
+                                            onMouseLeave={()=>setHoverBig(-1)}
+                                        > 
                                             <th>{(new Date(chart[0].time)).toString().split(' ')[1]+' '+chart[0].time.split('.')[0]}</th>
-                                            }
                                             <th>{chart.filter(c=>c.realTake>0).length}</th>
                                             <th>{chart.length-chart.filter(c=>c.realTake>0).length}</th>
                                             <th>{(chart.reduce((a,c)=> c.realTake+a,0)).toFixed(2)}%</th>
                                             <th colSpan={2}>{(chart.reduce((a,c)=> c.max+a,0)).toFixed(2)}%</th>
-                                            
-                                    </tr>
-                                    {month!==(tableCharts.length>1? j:i)? '' : <>
-                                        <tr style={{background: 'rgb(24,24,27,1)', lineHeight: '2rem'}}>
-                                            {Object.keys(tableChart?.[0]?.[0]||{}).map(key=> 
-                                                <th key={key}>{key}</th>
-                                            )}
                                         </tr>
-                                        {(chart||[]).map((c,j)=><tr key={JSON.stringify(c)+j} 
-                                            style={{ background: j===hoverSm? 'black':'rgb(24,24,27,1)' }}
-                                            onMouseEnter={()=>setHoverSm(j)}
-                                            onMouseLeave={()=>setHoverSm(-1)}
-                                        >   
-                                            {Object.keys(c||{}).map(key=><th key={key} 
-                                                style={{
-                                                    color: key=='type'? c[key]== 'Buy'? 'teal' : 'yellow' :
-                                                    ['priceMovement','realTake'].includes(key)? c[key]>0? 'green' : 'red' :
-                                                    'rgb(227,227,227)',
-                                                }}
-                                            >
-                                            {
-                                                ['priceMovement', 'realTake', 'min', 'max']
-                                                .includes(key)? c[key].toFixed(2)+'%' :
-                                                c[key]
-                                            }
-                                            </th>)}
-                                        </tr>)}
-                                    </>}
-                                </>
-                                )}
-                            </tbody>    
+                                        {month!==i? '' : <>
+                                            <tr style={{background: 'rgb(24,24,27,1)', lineHeight: '2rem'}}>
+                                                {Object.keys(tableChart?.[0]?.[0]||{}).map(key=> 
+                                                    <th key={key}>{key}</th>
+                                                )}
+                                            </tr>
+                                            {(chart||[]).map((c,j)=><tr key={JSON.stringify(c)+j} 
+                                                style={{ background: j===hoverSm? 'black':'rgb(24,24,27,1)' }}
+                                                onMouseEnter={()=>setHoverSm(j)}
+                                                onMouseLeave={()=>setHoverSm(-1)}
+                                            >   
+                                                {Object.keys(c||{}).map(key=><th key={key} 
+                                                    style={{
+                                                        color: key=='type'? c[key]== 'Buy'? 'teal' : 'yellow' :
+                                                        ['priceMovement','realTake'].includes(key)? c[key]>0? 'green' : 'red' :
+                                                        'rgb(227,227,227)',
+                                                    }}
+                                                >
+                                                {
+                                                    ['priceMovement', 'realTake', 'min', 'max']
+                                                    .includes(key)? c[key].toFixed(2)+'%' :
+                                                    c[key]
+                                                }
+                                                </th>)}
+                                            </tr>)}
+                                        </>}
+                                    </>)
+                                }
+                            />
                         )}
+                        </tbody> 
                     </table>
                 </div>
                 <div style={{height: '6rem'}}></div>
@@ -497,6 +515,15 @@ export default function IndexPage(){
         {loading? <Loading /> : ''}
     </>
 
+}
+
+
+function FilePreviewer({head, body, isOpen}){
+
+    return<>
+        {head}
+        {isOpen? body: ''}
+    </>
 }
 
 
