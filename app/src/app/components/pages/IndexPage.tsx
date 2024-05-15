@@ -56,22 +56,25 @@ export default function IndexPage(){
         if(choose!==charts[0]?.favorite) setChoose([charts[0]?.favorite, charts[0]?.next]);
     },[JSON.stringify(charts)]);
 
-    const goHandler = function(hs?: string | any) {
-        let {diaposone, histories, range} = form;
-        if(hs) histories = hs;
-        if(histories.length>2) setLoading(true);
-        (histories as string[]) = histories.map((h: string) => h.split('\n')
-            .map(l => l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	'))
-            .filter(l=> new Date(l[0]).getTime()>=range.start-12*3600000 && new Date(l[0]).getTime()<range.end)
-            .map(l => l.join(';')).join('\n'))
-        diaposone = (diaposone+'')?.includes('~')? '0': diaposone;
-        dispatch(getCharts({...form, diaposone, histories}));
-        setMonth(-1);
-        setLoading(false);
+    const goHandler = async function(hs?: string | any) {
+        setLoading(true);
+        setTimeout(()=> {
+            let {diaposone, histories, range} = form;
+            if(hs) histories = hs;
+            (histories as string[]) = histories.map((h: string) => h.split('\n')
+                .map(l => l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	'))
+                .filter(l=> new Date(l[0]).getTime()>=range.start-12*3600000 && new Date(l[0]).getTime()<range.end)
+                .map(l => l.join(';')).join('\n'))
+            diaposone = (diaposone+'')?.includes('~')? '0': diaposone;
+            
+            dispatch(getCharts({...form, diaposone, histories}));
+            setMonth(-1);
+            setLoading(false);
+        },0)
     }
 
     useEffect(()=>{
-        goHandler()
+        goHandler();
     },[form.strategy]);
 
     const formChangeHandler = (e) => {
@@ -80,7 +83,7 @@ export default function IndexPage(){
 
     const loadFileHandler = async (event) => {
         const files = event.target.files;
-        if(files.length>3) setLoading(true);
+        setLoading(true);
         const histories = await Promise.all([...files].map(file=>new Promise((res)=>{
             const reader = new FileReader();
             reader.onload = (event) => res(event.target?.result);
