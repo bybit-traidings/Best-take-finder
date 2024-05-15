@@ -42,10 +42,10 @@ export default function IndexPage(){
     const [loading, setLoading] = useState(false);
    
     // @ts-ignore
-    window.setHistory = function(cb: (history: string) => string){
-        if(form.histories.length == 1) goHandler(cb(form.histories[0]));
-        else window.alert('Can not change history fore many files!');
-    }
+    // window.setHistory = function(cb: (history: string) => string){
+    //     if(form.histories.length == 1) goHandler(cb(form.histories[0]));
+    //     else window.alert('Can not change history fore many files!');
+    // }
     
     useEffect(function(){
         dispatch(getCharts(form));
@@ -55,7 +55,7 @@ export default function IndexPage(){
         if(form.diaposone!==charts[0]?.d) setForm(p=>({...p, diaposone: charts[0]?.d}));
         if(choose!==charts[0]?.favorite) setChoose([charts[0]?.favorite, charts[0]?.next]);
     },[JSON.stringify(charts)]);
-
+ 
     const goHandler = async function(hs?: string | any) {
         setLoading(true);
         setTimeout(()=> {
@@ -132,8 +132,35 @@ export default function IndexPage(){
 
     const joinTableCharts = (tc) => tc.reduce((a,c) => [...a,...c],[])
 
-    console.log(charts, form.histories.length);
+    console.log(charts, tableCharts, form.histories.length);
     
+    const loadTableHandler = async () => {
+        setLoading(true);
+        let histories = [...tableCharts].map(chart=>[
+            `Date;Side;useful price movement %;realTake %;shadow min %;shadow max %`,
+            ...chart
+            .reduce((a,c)=>[...a,...c],[])
+            .map(c => `${c.time};${c.type};${c.priceMovement};${c.realTake};${c.min};${c.max}`)
+            ].join('\n')
+        );
+         
+        console.log(histories, files);
+        
+
+        histories.forEach((csvText, i) => {
+            const url = URL.createObjectURL(new Blob([csvText], { type: 'text/csv' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = files[i].replace('.csv','(Result).csv'); // Сохраняем оригинальное имя файла с новым расширением
+            document.body.appendChild(a);
+            a.click(); // Инициируем загрузку
+            document.body.removeChild(a); // Удаляем элемент после клика
+            // Освобождаем URL объекта
+            URL.revokeObjectURL(url);
+
+        });
+        setLoading(false);
+    }
    
     return <>
         <div style={{
@@ -386,7 +413,7 @@ export default function IndexPage(){
                 <div data-name='results'
                     style={{
                         fontSize: '1rem',
-                        height: 'calc(100vh - 260px)',
+                        minHeight: 'calc(100vh - 260px)',
                         margin: '2rem'
                     }}
                 >
@@ -509,8 +536,11 @@ export default function IndexPage(){
                         )}
                         </tbody> 
                     </table>
+                    <div style={{marginTop: '4rem', display: 'flex', justifyContent: 'center'}}>
+                        <Button text='download' onClick={loadTableHandler}/>
+                    </div>
                 </div>
-                <div style={{height: '6rem'}}></div>
+                <div style={{height: '16rem'}}></div>
             </div>
             
         </div>

@@ -21,7 +21,7 @@ export default function Reverser(){
             reader.onload = (event) => res(event.target?.result as string);
             reader.readAsText(file);
         })));
-        
+         
         histories = histories.map(h  => h
             .split('\n')
             .map(l => l.split(',').length>1?l.split(','): l.split(';').length>1?l.split(';'): l.split('	'))
